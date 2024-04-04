@@ -105,6 +105,7 @@ class AgentClient:
         type: typing.Optional[AgentType] = OMIT,
         parameters: typing.Optional[OpenAiAssistantParameters] = OMIT,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = OMIT,
+        output_schema: typing.Optional[str] = OMIT,
         request_options: typing.Optional[RequestOptions] = None,
     ) -> AppModelsResponseAgent:
         """
@@ -133,6 +134,8 @@ class AgentClient:
 
             - metadata: typing.Optional[typing.Dict[str, typing.Any]].
 
+            - output_schema: typing.Optional[str].
+
             - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
         """
         _request: typing.Dict[str, typing.Any] = {"name": name}
@@ -156,6 +159,8 @@ class AgentClient:
             _request["parameters"] = parameters
         if metadata is not OMIT:
             _request["metadata"] = metadata
+        if output_schema is not OMIT:
+            _request["outputSchema"] = output_schema
         _response = self._client_wrapper.httpx_client.request(
             "POST",
             urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/agents"),
@@ -287,6 +292,7 @@ class AgentClient:
         avatar: typing.Optional[str] = OMIT,
         type: typing.Optional[str] = OMIT,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = OMIT,
+        output_schema: typing.Optional[str] = OMIT,
         request_options: typing.Optional[RequestOptions] = None,
     ) -> AppModelsResponseAgent:
         """
@@ -313,6 +319,8 @@ class AgentClient:
 
             - metadata: typing.Optional[typing.Dict[str, typing.Any]].
 
+            - output_schema: typing.Optional[str].
+
             - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
         """
         _request: typing.Dict[str, typing.Any] = {}
@@ -334,6 +342,8 @@ class AgentClient:
             _request["type"] = type
         if metadata is not OMIT:
             _request["metadata"] = metadata
+        if output_schema is not OMIT:
+            _request["outputSchema"] = output_schema
         _response = self._client_wrapper.httpx_client.request(
             "PATCH",
             urllib.parse.urljoin(
@@ -897,6 +907,7 @@ class AsyncAgentClient:
         type: typing.Optional[AgentType] = OMIT,
         parameters: typing.Optional[OpenAiAssistantParameters] = OMIT,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = OMIT,
+        output_schema: typing.Optional[str] = OMIT,
         request_options: typing.Optional[RequestOptions] = None,
     ) -> AppModelsResponseAgent:
         """
@@ -925,6 +936,8 @@ class AsyncAgentClient:
 
             - metadata: typing.Optional[typing.Dict[str, typing.Any]].
 
+            - output_schema: typing.Optional[str].
+
             - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
         """
         _request: typing.Dict[str, typing.Any] = {"name": name}
@@ -948,6 +961,8 @@ class AsyncAgentClient:
             _request["parameters"] = parameters
         if metadata is not OMIT:
             _request["metadata"] = metadata
+        if output_schema is not OMIT:
+            _request["outputSchema"] = output_schema
         _response = await self._client_wrapper.httpx_client.request(
             "POST",
             urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/agents"),
@@ -1081,6 +1096,7 @@ class AsyncAgentClient:
         avatar: typing.Optional[str] = OMIT,
         type: typing.Optional[str] = OMIT,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = OMIT,
+        output_schema: typing.Optional[str] = OMIT,
         request_options: typing.Optional[RequestOptions] = None,
     ) -> AppModelsResponseAgent:
         """
@@ -1107,6 +1123,8 @@ class AsyncAgentClient:
 
             - metadata: typing.Optional[typing.Dict[str, typing.Any]].
 
+            - output_schema: typing.Optional[str].
+
             - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
         """
         _request: typing.Dict[str, typing.Any] = {}
@@ -1128,6 +1146,8 @@ class AsyncAgentClient:
             _request["type"] = type
         if metadata is not OMIT:
             _request["metadata"] = metadata
+        if output_schema is not OMIT:
+            _request["outputSchema"] = output_schema
         _response = await self._client_wrapper.httpx_client.request(
             "PATCH",
             urllib.parse.urljoin(

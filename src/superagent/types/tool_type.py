@@ -33,6 +33,7 @@ class ToolType(str, enum.Enum):
     RESEARCH = "RESEARCH"
     GITHUB = "GITHUB"
     SCRAPER = "SCRAPER"
+    GOOGLE_SEARCH = "GOOGLE_SEARCH"
 
     def visit(
         self,
@@ -58,6 +59,7 @@ class ToolType(str, enum.Enum):
         research: typing.Callable[[], T_Result],
         github: typing.Callable[[], T_Result],
         scraper: typing.Callable[[], T_Result],
+        google_search: typing.Callable[[], T_Result],
     ) -> T_Result:
         if self is ToolType.ALGOLIA:
             return algolia()
@@ -103,3 +105,5 @@ class ToolType(str, enum.Enum):
             return github()
         if self is ToolType.SCRAPER:
             return scraper()
+        if self is ToolType.GOOGLE_SEARCH:
+            return google_search()

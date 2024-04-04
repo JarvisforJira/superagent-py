@@ -285,6 +285,7 @@ class WorkflowClient:
         input: str,
         enable_streaming: bool,
         session_id: typing.Optional[str] = OMIT,
+        output_schemas: typing.Optional[typing.Dict[str, str]] = OMIT,
         request_options: typing.Optional[RequestOptions] = None,
     ) -> typing.Any:
         """
@@ -299,11 +300,15 @@ class WorkflowClient:
 
             - session_id: typing.Optional[str].
 
+            - output_schemas: typing.Optional[typing.Dict[str, str]].
+
             - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
         """
         _request: typing.Dict[str, typing.Any] = {"input": input, "enableStreaming": enable_streaming}
         if session_id is not OMIT:
             _request["sessionId"] = session_id
+        if output_schemas is not OMIT:
+            _request["outputSchemas"] = output_schemas
         _response = self._client_wrapper.httpx_client.request(
             "POST",
             urllib.parse.urljoin(
@@ -745,6 +750,7 @@ class AsyncWorkflowClient:
         input: str,
         enable_streaming: bool,
         session_id: typing.Optional[str] = OMIT,
+        output_schemas: typing.Optional[typing.Dict[str, str]] = OMIT,
         request_options: typing.Optional[RequestOptions] = None,
     ) -> typing.Any:
         """
@@ -759,11 +765,15 @@ class AsyncWorkflowClient:
 
             - session_id: typing.Optional[str].
 
+            - output_schemas: typing.Optional[typing.Dict[str, str]].
+
             - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
         """
         _request: typing.Dict[str, typing.Any] = {"input": input, "enableStreaming": enable_streaming}
         if session_id is not OMIT:
             _request["sessionId"] = session_id
+        if output_schemas is not OMIT:
+            _request["outputSchemas"] = output_schemas
         _response = await self._client_wrapper.httpx_client.request(
             "POST",
             urllib.parse.urljoin(

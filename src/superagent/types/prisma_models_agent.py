@@ -40,6 +40,7 @@ class PrismaModelsAgent(pydantic.BaseModel):
         alias="workflowSteps", default=None
     )
     metadata: typing.Optional[typing.Any] = None
+    output_schema: typing.Optional[str] = pydantic.Field(alias="outputSchema", default=None)
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
