@@ -286,6 +286,7 @@ class WorkflowClient:
         enable_streaming: bool,
         session_id: typing.Optional[str] = OMIT,
         output_schemas: typing.Optional[typing.Dict[str, str]] = OMIT,
+        output_schema: typing.Optional[str] = OMIT,
         request_options: typing.Optional[RequestOptions] = None,
     ) -> typing.Any:
         """
@@ -302,6 +303,8 @@ class WorkflowClient:
 
             - output_schemas: typing.Optional[typing.Dict[str, str]].
 
+            - output_schema: typing.Optional[str].
+
             - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
         """
         _request: typing.Dict[str, typing.Any] = {"input": input, "enableStreaming": enable_streaming}
@@ -309,6 +312,8 @@ class WorkflowClient:
             _request["sessionId"] = session_id
         if output_schemas is not OMIT:
             _request["outputSchemas"] = output_schemas
+        if output_schema is not OMIT:
+            _request["outputSchema"] = output_schema
         _response = self._client_wrapper.httpx_client.request(
             "POST",
             urllib.parse.urljoin(
@@ -751,6 +756,7 @@ class AsyncWorkflowClient:
         enable_streaming: bool,
         session_id: typing.Optional[str] = OMIT,
         output_schemas: typing.Optional[typing.Dict[str, str]] = OMIT,
+        output_schema: typing.Optional[str] = OMIT,
         request_options: typing.Optional[RequestOptions] = None,
     ) -> typing.Any:
         """
@@ -767,6 +773,8 @@ class AsyncWorkflowClient:
 
             - output_schemas: typing.Optional[typing.Dict[str, str]].
 
+            - output_schema: typing.Optional[str].
+
             - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
         """
         _request: typing.Dict[str, typing.Any] = {"input": input, "enableStreaming": enable_streaming}
@@ -774,6 +782,8 @@ class AsyncWorkflowClient:
             _request["sessionId"] = session_id
         if output_schemas is not OMIT:
             _request["outputSchemas"] = output_schemas
+        if output_schema is not OMIT:
+            _request["outputSchema"] = output_schema
         _response = await self._client_wrapper.httpx_client.request(
             "POST",
             urllib.parse.urljoin(
