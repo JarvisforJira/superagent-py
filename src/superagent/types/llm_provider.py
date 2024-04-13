@@ -17,6 +17,7 @@ class LlmProvider(str, enum.Enum):
     PERPLEXITY = "PERPLEXITY"
     TOGETHER_AI = "TOGETHER_AI"
     ANTHROPIC = "ANTHROPIC"
+    BEDROCK = "BEDROCK"
 
     def visit(
         self,
@@ -26,6 +27,7 @@ class LlmProvider(str, enum.Enum):
         perplexity: typing.Callable[[], T_Result],
         together_ai: typing.Callable[[], T_Result],
         anthropic: typing.Callable[[], T_Result],
+        bedrock: typing.Callable[[], T_Result],
     ) -> T_Result:
         if self is LlmProvider.OPENAI:
             return openai()
@@ -39,3 +41,5 @@ class LlmProvider(str, enum.Enum):
             return together_ai()
         if self is LlmProvider.ANTHROPIC:
             return anthropic()
+        if self is LlmProvider.BEDROCK:
+            return bedrock()
