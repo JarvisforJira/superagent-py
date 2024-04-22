@@ -20,6 +20,7 @@ class LlmProvider(str, enum.Enum):
     BEDROCK = "BEDROCK"
     GROQ = "GROQ"
     MISTRAL = "MISTRAL"
+    COHERE_CHAT = "COHERE_CHAT"
 
     def visit(
         self,
@@ -32,6 +33,7 @@ class LlmProvider(str, enum.Enum):
         bedrock: typing.Callable[[], T_Result],
         groq: typing.Callable[[], T_Result],
         mistral: typing.Callable[[], T_Result],
+        cohere_chat: typing.Callable[[], T_Result],
     ) -> T_Result:
         if self is LlmProvider.OPENAI:
             return openai()
@@ -51,3 +53,5 @@ class LlmProvider(str, enum.Enum):
             return groq()
         if self is LlmProvider.MISTRAL:
             return mistral()
+        if self is LlmProvider.COHERE_CHAT:
+            return cohere_chat()
