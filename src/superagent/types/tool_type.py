@@ -35,6 +35,7 @@ class ToolType(str, enum.Enum):
     SCRAPER = "SCRAPER"
     ADVANCED_SCRAPER = "ADVANCED_SCRAPER"
     GOOGLE_SEARCH = "GOOGLE_SEARCH"
+    SEC = "SEC"
 
     def visit(
         self,
@@ -62,6 +63,7 @@ class ToolType(str, enum.Enum):
         scraper: typing.Callable[[], T_Result],
         advanced_scraper: typing.Callable[[], T_Result],
         google_search: typing.Callable[[], T_Result],
+        sec: typing.Callable[[], T_Result],
     ) -> T_Result:
         if self is ToolType.ALGOLIA:
             return algolia()
@@ -111,3 +113,5 @@ class ToolType(str, enum.Enum):
             return advanced_scraper()
         if self is ToolType.GOOGLE_SEARCH:
             return google_search()
+        if self is ToolType.SEC:
+            return sec()
