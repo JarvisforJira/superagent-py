@@ -7,6 +7,8 @@ from json.decoder import JSONDecodeError
 from ...core.api_error import ApiError
 from ...core.client_wrapper import AsyncClientWrapper, SyncClientWrapper
 from ...core.jsonable_encoder import jsonable_encoder
+from ...core.pydantic_utilities import pydantic_v1
+from ...core.query_encoder import encode_query
 from ...core.remove_none_from_dict import remove_none_from_dict
 from ...core.request_options import RequestOptions
 from ...errors.unprocessable_entity_error import UnprocessableEntityError
@@ -20,11 +22,6 @@ from ...types.http_validation_error import HttpValidationError
 from ...types.llm_params import LlmParams
 from ...types.llm_provider import LlmProvider
 from ...types.open_ai_assistant_parameters import OpenAiAssistantParameters
-
-try:
-    import pydantic.v1 as pydantic  # type: ignore
-except ImportError:
-    import pydantic  # type: ignore
 
 # this is used as the default value for optional parameters
 OMIT = typing.cast(typing.Any, ...)
@@ -44,27 +41,48 @@ class AgentClient:
         """
         List all agents
 
-        Parameters:
-            - skip: typing.Optional[int].
+        Parameters
+        ----------
+        skip : typing.Optional[int]
 
-            - take: typing.Optional[int].
+        take : typing.Optional[int]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AgentList
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.list(
+            skip=1,
+            take=1,
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/agents"),
-            params=jsonable_encoder(
-                remove_none_from_dict(
-                    {
-                        "skip": skip,
-                        "take": take,
-                        **(
-                            request_options.get("additional_query_parameters", {})
-                            if request_options is not None
-                            else {}
-                        ),
-                    }
+            method="GET",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/agents"),
+            params=encode_query(
+                jsonable_encoder(
+                    remove_none_from_dict(
+                        {
+                            "skip": skip,
+                            "take": take,
+                            **(
+                                request_options.get("additional_query_parameters", {})
+                                if request_options is not None
+                                else {}
+                            ),
+                        }
+                    )
                 )
             ),
             headers=jsonable_encoder(
@@ -77,14 +95,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AgentList, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AgentList, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -94,8 +114,8 @@ class AgentClient:
     def create(
         self,
         *,
-        is_active: typing.Optional[bool] = OMIT,
         name: str,
+        is_active: typing.Optional[bool] = OMIT,
         initial_message: typing.Optional[str] = OMIT,
         prompt: typing.Optional[str] = OMIT,
         llm_model: typing.Optional[str] = OMIT,
@@ -111,32 +131,71 @@ class AgentClient:
         """
         Create a new agent
 
-        Parameters:
-            - is_active: typing.Optional[bool].
+        Parameters
+        ----------
+        name : str
 
-            - name: str.
+        is_active : typing.Optional[bool]
 
-            - initial_message: typing.Optional[str].
+        initial_message : typing.Optional[str]
 
-            - prompt: typing.Optional[str].
+        prompt : typing.Optional[str]
 
-            - llm_model: typing.Optional[str].
+        llm_model : typing.Optional[str]
 
-            - llm_provider: typing.Optional[LlmProvider].
+        llm_provider : typing.Optional[LlmProvider]
 
-            - description: typing.Optional[str].
+        description : typing.Optional[str]
 
-            - avatar: typing.Optional[str].
+        avatar : typing.Optional[str]
 
-            - type: typing.Optional[AgentType].
+        type : typing.Optional[AgentType]
 
-            - parameters: typing.Optional[OpenAiAssistantParameters].
+        parameters : typing.Optional[OpenAiAssistantParameters]
 
-            - metadata: typing.Optional[typing.Dict[str, typing.Any]].
+        metadata : typing.Optional[typing.Dict[str, typing.Any]]
 
-            - output_schema: typing.Optional[str].
+        output_schema : typing.Optional[str]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgent
+            Successful Response
+
+        Examples
+        --------
+        from superagent import (
+            AgentType,
+            LlmProvider,
+            OpenAiAssistantParameters,
+            OpenAiAssistantParametersToolsItem_CodeInterpreter,
+        )
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.create(
+            is_active=True,
+            name="string",
+            initial_message="string",
+            prompt="string",
+            llm_model="string",
+            llm_provider=LlmProvider.OPENAI,
+            description="string",
+            avatar="string",
+            type=AgentType.SUPERAGENT,
+            parameters=OpenAiAssistantParameters(
+                metadata={"string": {"key": "value"}},
+                file_ids=["string"],
+                tools=[OpenAiAssistantParametersToolsItem_CodeInterpreter()],
+            ),
+            metadata={"string": {"key": "value"}},
+            output_schema="string",
+        )
         """
         _request: typing.Dict[str, typing.Any] = {"name": name}
         if is_active is not OMIT:
@@ -162,10 +221,12 @@ class AgentClient:
         if output_schema is not OMIT:
             _request["outputSchema"] = output_schema
         _response = self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/agents"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="POST",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/agents"),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(_request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -183,14 +244,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -201,18 +264,38 @@ class AgentClient:
         """
         Get a single agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgent
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.get(
+            agent_id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(
+            method="GET",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -224,14 +307,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -242,18 +327,38 @@ class AgentClient:
         """
         Delete an agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.delete(
+            agent_id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "DELETE",
-            urllib.parse.urljoin(
+            method="DELETE",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -265,14 +370,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -298,30 +405,58 @@ class AgentClient:
         """
         Patch an agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - is_active: typing.Optional[bool].
+        is_active : typing.Optional[bool]
 
-            - name: typing.Optional[str].
+        name : typing.Optional[str]
 
-            - initial_message: typing.Optional[str].
+        initial_message : typing.Optional[str]
 
-            - prompt: typing.Optional[str].
+        prompt : typing.Optional[str]
 
-            - llm_model: typing.Optional[str].
+        llm_model : typing.Optional[str]
 
-            - description: typing.Optional[str].
+        description : typing.Optional[str]
 
-            - avatar: typing.Optional[str].
+        avatar : typing.Optional[str]
 
-            - type: typing.Optional[str].
+        type : typing.Optional[str]
 
-            - metadata: typing.Optional[typing.Dict[str, typing.Any]].
+        metadata : typing.Optional[typing.Dict[str, typing.Any]]
 
-            - output_schema: typing.Optional[str].
+        output_schema : typing.Optional[str]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgent
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.update(
+            agent_id="string",
+            is_active=True,
+            name="string",
+            initial_message="string",
+            prompt="string",
+            llm_model="string",
+            description="string",
+            avatar="string",
+            type="string",
+            metadata={"string": {"key": "value"}},
+            output_schema="string",
+        )
         """
         _request: typing.Dict[str, typing.Any] = {}
         if is_active is not OMIT:
@@ -345,12 +480,14 @@ class AgentClient:
         if output_schema is not OMIT:
             _request["outputSchema"] = output_schema
         _response = self._client_wrapper.httpx_client.request(
-            "PATCH",
-            urllib.parse.urljoin(
+            method="PATCH",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(_request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -368,14 +505,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -387,8 +526,8 @@ class AgentClient:
         agent_id: str,
         *,
         input: str,
-        session_id: typing.Optional[str] = OMIT,
         enable_streaming: bool,
+        session_id: typing.Optional[str] = OMIT,
         output_schema: typing.Optional[str] = OMIT,
         llm_params: typing.Optional[LlmParams] = OMIT,
         request_options: typing.Optional[RequestOptions] = None,
@@ -396,20 +535,47 @@ class AgentClient:
         """
         Invoke an agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - input: str.
+        input : str
 
-            - session_id: typing.Optional[str].
+        enable_streaming : bool
 
-            - enable_streaming: bool.
+        session_id : typing.Optional[str]
 
-            - output_schema: typing.Optional[str].
+        output_schema : typing.Optional[str]
 
-            - llm_params: typing.Optional[LlmParams].
+        llm_params : typing.Optional[LlmParams]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgentInvoke
+            Successful Response
+
+        Examples
+        --------
+        from superagent import LlmParams
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.invoke(
+            agent_id="string",
+            input="string",
+            session_id="string",
+            enable_streaming=True,
+            output_schema="string",
+            llm_params=LlmParams(
+                max_tokens=1,
+                temperature=1.1,
+            ),
+        )
         """
         _request: typing.Dict[str, typing.Any] = {"input": input, "enableStreaming": enable_streaming}
         if session_id is not OMIT:
@@ -419,12 +585,14 @@ class AgentClient:
         if llm_params is not OMIT:
             _request["llm_params"] = llm_params
         _response = self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(
+            method="POST",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}/invoke"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(_request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -442,14 +610,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgentInvoke, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgentInvoke, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -462,20 +632,41 @@ class AgentClient:
         """
         Add LLM to agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - llm_id: str.
+        llm_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgent
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.add_llm(
+            agent_id="string",
+            llm_id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(
+            method="POST",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}/llms"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder({"llmId": llm_id})
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -493,14 +684,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -513,21 +706,42 @@ class AgentClient:
         """
         Remove LLM from agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - llm_id: str.
+        llm_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.remove_llm(
+            agent_id="string",
+            llm_id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "DELETE",
-            urllib.parse.urljoin(
+            method="DELETE",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/",
                 f"api/v1/agents/{jsonable_encoder(agent_id)}/llms/{jsonable_encoder(llm_id)}",
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -539,14 +753,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -557,18 +773,38 @@ class AgentClient:
         """
         List agent tools
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AgentToolList
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.list_tools(
+            agent_id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(
+            method="GET",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}/tools"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -580,14 +816,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AgentToolList, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AgentToolList, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -600,20 +838,41 @@ class AgentClient:
         """
         Add tool to agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - tool_id: str.
+        tool_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgent
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.add_tool(
+            agent_id="string",
+            tool_id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(
+            method="POST",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}/tools"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder({"toolId": tool_id})
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -631,14 +890,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -651,21 +912,42 @@ class AgentClient:
         """
         Remove tool from agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - tool_id: str.
+        tool_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.remove_tool(
+            agent_id="string",
+            tool_id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "DELETE",
-            urllib.parse.urljoin(
+            method="DELETE",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/",
                 f"api/v1/agents/{jsonable_encoder(agent_id)}/tools/{jsonable_encoder(tool_id)}",
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -677,14 +959,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -697,18 +981,38 @@ class AgentClient:
         """
         List agent datasources
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AgentDatasosurceList
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.list_datasources(
+            agent_id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(
+            method="GET",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}/datasources"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -720,14 +1024,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AgentDatasosurceList, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AgentDatasosurceList, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -740,20 +1046,41 @@ class AgentClient:
         """
         Add datasource to agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - datasource_id: str.
+        datasource_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgent
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.add_datasource(
+            agent_id="string",
+            datasource_id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(
+            method="POST",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}/datasources"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder({"datasourceId": datasource_id})
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -771,14 +1098,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -791,21 +1120,42 @@ class AgentClient:
         """
         Remove datasource from agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - datasource_id: str.
+        datasource_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.agent.remove_datasource(
+            agent_id="string",
+            datasource_id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "DELETE",
-            urllib.parse.urljoin(
+            method="DELETE",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/",
                 f"api/v1/agents/{jsonable_encoder(agent_id)}/datasources/{jsonable_encoder(datasource_id)}",
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -817,14 +1167,16 @@ class AgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -846,27 +1198,48 @@ class AsyncAgentClient:
         """
         List all agents
 
-        Parameters:
-            - skip: typing.Optional[int].
+        Parameters
+        ----------
+        skip : typing.Optional[int]
 
-            - take: typing.Optional[int].
+        take : typing.Optional[int]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AgentList
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.list(
+            skip=1,
+            take=1,
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/agents"),
-            params=jsonable_encoder(
-                remove_none_from_dict(
-                    {
-                        "skip": skip,
-                        "take": take,
-                        **(
-                            request_options.get("additional_query_parameters", {})
-                            if request_options is not None
-                            else {}
-                        ),
-                    }
+            method="GET",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/agents"),
+            params=encode_query(
+                jsonable_encoder(
+                    remove_none_from_dict(
+                        {
+                            "skip": skip,
+                            "take": take,
+                            **(
+                                request_options.get("additional_query_parameters", {})
+                                if request_options is not None
+                                else {}
+                            ),
+                        }
+                    )
                 )
             ),
             headers=jsonable_encoder(
@@ -879,14 +1252,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AgentList, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AgentList, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -896,8 +1271,8 @@ class AsyncAgentClient:
     async def create(
         self,
         *,
-        is_active: typing.Optional[bool] = OMIT,
         name: str,
+        is_active: typing.Optional[bool] = OMIT,
         initial_message: typing.Optional[str] = OMIT,
         prompt: typing.Optional[str] = OMIT,
         llm_model: typing.Optional[str] = OMIT,
@@ -913,32 +1288,71 @@ class AsyncAgentClient:
         """
         Create a new agent
 
-        Parameters:
-            - is_active: typing.Optional[bool].
+        Parameters
+        ----------
+        name : str
 
-            - name: str.
+        is_active : typing.Optional[bool]
 
-            - initial_message: typing.Optional[str].
+        initial_message : typing.Optional[str]
 
-            - prompt: typing.Optional[str].
+        prompt : typing.Optional[str]
 
-            - llm_model: typing.Optional[str].
+        llm_model : typing.Optional[str]
 
-            - llm_provider: typing.Optional[LlmProvider].
+        llm_provider : typing.Optional[LlmProvider]
 
-            - description: typing.Optional[str].
+        description : typing.Optional[str]
 
-            - avatar: typing.Optional[str].
+        avatar : typing.Optional[str]
 
-            - type: typing.Optional[AgentType].
+        type : typing.Optional[AgentType]
 
-            - parameters: typing.Optional[OpenAiAssistantParameters].
+        parameters : typing.Optional[OpenAiAssistantParameters]
 
-            - metadata: typing.Optional[typing.Dict[str, typing.Any]].
+        metadata : typing.Optional[typing.Dict[str, typing.Any]]
 
-            - output_schema: typing.Optional[str].
+        output_schema : typing.Optional[str]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgent
+            Successful Response
+
+        Examples
+        --------
+        from superagent import (
+            AgentType,
+            LlmProvider,
+            OpenAiAssistantParameters,
+            OpenAiAssistantParametersToolsItem_CodeInterpreter,
+        )
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.create(
+            is_active=True,
+            name="string",
+            initial_message="string",
+            prompt="string",
+            llm_model="string",
+            llm_provider=LlmProvider.OPENAI,
+            description="string",
+            avatar="string",
+            type=AgentType.SUPERAGENT,
+            parameters=OpenAiAssistantParameters(
+                metadata={"string": {"key": "value"}},
+                file_ids=["string"],
+                tools=[OpenAiAssistantParametersToolsItem_CodeInterpreter()],
+            ),
+            metadata={"string": {"key": "value"}},
+            output_schema="string",
+        )
         """
         _request: typing.Dict[str, typing.Any] = {"name": name}
         if is_active is not OMIT:
@@ -964,10 +1378,12 @@ class AsyncAgentClient:
         if output_schema is not OMIT:
             _request["outputSchema"] = output_schema
         _response = await self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/agents"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="POST",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/agents"),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(_request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -985,14 +1401,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -1005,18 +1423,38 @@ class AsyncAgentClient:
         """
         Get a single agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgent
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.get(
+            agent_id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(
+            method="GET",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -1028,14 +1466,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -1046,18 +1486,38 @@ class AsyncAgentClient:
         """
         Delete an agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.delete(
+            agent_id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "DELETE",
-            urllib.parse.urljoin(
+            method="DELETE",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -1069,14 +1529,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -1102,30 +1564,58 @@ class AsyncAgentClient:
         """
         Patch an agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - is_active: typing.Optional[bool].
+        is_active : typing.Optional[bool]
 
-            - name: typing.Optional[str].
+        name : typing.Optional[str]
 
-            - initial_message: typing.Optional[str].
+        initial_message : typing.Optional[str]
 
-            - prompt: typing.Optional[str].
+        prompt : typing.Optional[str]
 
-            - llm_model: typing.Optional[str].
+        llm_model : typing.Optional[str]
 
-            - description: typing.Optional[str].
+        description : typing.Optional[str]
 
-            - avatar: typing.Optional[str].
+        avatar : typing.Optional[str]
 
-            - type: typing.Optional[str].
+        type : typing.Optional[str]
 
-            - metadata: typing.Optional[typing.Dict[str, typing.Any]].
+        metadata : typing.Optional[typing.Dict[str, typing.Any]]
 
-            - output_schema: typing.Optional[str].
+        output_schema : typing.Optional[str]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgent
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.update(
+            agent_id="string",
+            is_active=True,
+            name="string",
+            initial_message="string",
+            prompt="string",
+            llm_model="string",
+            description="string",
+            avatar="string",
+            type="string",
+            metadata={"string": {"key": "value"}},
+            output_schema="string",
+        )
         """
         _request: typing.Dict[str, typing.Any] = {}
         if is_active is not OMIT:
@@ -1149,12 +1639,14 @@ class AsyncAgentClient:
         if output_schema is not OMIT:
             _request["outputSchema"] = output_schema
         _response = await self._client_wrapper.httpx_client.request(
-            "PATCH",
-            urllib.parse.urljoin(
+            method="PATCH",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(_request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -1172,14 +1664,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -1191,8 +1685,8 @@ class AsyncAgentClient:
         agent_id: str,
         *,
         input: str,
-        session_id: typing.Optional[str] = OMIT,
         enable_streaming: bool,
+        session_id: typing.Optional[str] = OMIT,
         output_schema: typing.Optional[str] = OMIT,
         llm_params: typing.Optional[LlmParams] = OMIT,
         request_options: typing.Optional[RequestOptions] = None,
@@ -1200,20 +1694,47 @@ class AsyncAgentClient:
         """
         Invoke an agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - input: str.
+        input : str
 
-            - session_id: typing.Optional[str].
+        enable_streaming : bool
 
-            - enable_streaming: bool.
+        session_id : typing.Optional[str]
 
-            - output_schema: typing.Optional[str].
+        output_schema : typing.Optional[str]
 
-            - llm_params: typing.Optional[LlmParams].
+        llm_params : typing.Optional[LlmParams]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgentInvoke
+            Successful Response
+
+        Examples
+        --------
+        from superagent import LlmParams
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.invoke(
+            agent_id="string",
+            input="string",
+            session_id="string",
+            enable_streaming=True,
+            output_schema="string",
+            llm_params=LlmParams(
+                max_tokens=1,
+                temperature=1.1,
+            ),
+        )
         """
         _request: typing.Dict[str, typing.Any] = {"input": input, "enableStreaming": enable_streaming}
         if session_id is not OMIT:
@@ -1223,12 +1744,14 @@ class AsyncAgentClient:
         if llm_params is not OMIT:
             _request["llm_params"] = llm_params
         _response = await self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(
+            method="POST",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}/invoke"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(_request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -1246,14 +1769,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgentInvoke, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgentInvoke, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -1266,20 +1791,41 @@ class AsyncAgentClient:
         """
         Add LLM to agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - llm_id: str.
+        llm_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgent
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.add_llm(
+            agent_id="string",
+            llm_id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(
+            method="POST",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}/llms"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder({"llmId": llm_id})
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -1297,14 +1843,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -1317,21 +1865,42 @@ class AsyncAgentClient:
         """
         Remove LLM from agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - llm_id: str.
+        llm_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.remove_llm(
+            agent_id="string",
+            llm_id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "DELETE",
-            urllib.parse.urljoin(
+            method="DELETE",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/",
                 f"api/v1/agents/{jsonable_encoder(agent_id)}/llms/{jsonable_encoder(llm_id)}",
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -1343,14 +1912,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -1363,18 +1934,38 @@ class AsyncAgentClient:
         """
         List agent tools
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AgentToolList
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.list_tools(
+            agent_id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(
+            method="GET",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}/tools"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -1386,14 +1977,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AgentToolList, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AgentToolList, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -1406,20 +1999,41 @@ class AsyncAgentClient:
         """
         Add tool to agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - tool_id: str.
+        tool_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgent
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.add_tool(
+            agent_id="string",
+            tool_id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(
+            method="POST",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}/tools"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder({"toolId": tool_id})
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -1437,14 +2051,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -1457,21 +2073,42 @@ class AsyncAgentClient:
         """
         Remove tool from agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - tool_id: str.
+        tool_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.remove_tool(
+            agent_id="string",
+            tool_id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "DELETE",
-            urllib.parse.urljoin(
+            method="DELETE",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/",
                 f"api/v1/agents/{jsonable_encoder(agent_id)}/tools/{jsonable_encoder(tool_id)}",
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -1483,14 +2120,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -1503,18 +2142,38 @@ class AsyncAgentClient:
         """
         List agent datasources
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AgentDatasosurceList
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.list_datasources(
+            agent_id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(
+            method="GET",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}/datasources"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -1526,14 +2185,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AgentDatasosurceList, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AgentDatasosurceList, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -1546,20 +2207,41 @@ class AsyncAgentClient:
         """
         Add datasource to agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - datasource_id: str.
+        datasource_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseAgent
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.add_datasource(
+            agent_id="string",
+            datasource_id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(
+            method="POST",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/agents/{jsonable_encoder(agent_id)}/datasources"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder({"datasourceId": datasource_id})
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -1577,14 +2259,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseAgent, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -1597,21 +2281,42 @@ class AsyncAgentClient:
         """
         Remove datasource from agent
 
-        Parameters:
-            - agent_id: str.
+        Parameters
+        ----------
+        agent_id : str
 
-            - datasource_id: str.
+        datasource_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.agent.remove_datasource(
+            agent_id="string",
+            datasource_id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "DELETE",
-            urllib.parse.urljoin(
+            method="DELETE",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/",
                 f"api/v1/agents/{jsonable_encoder(agent_id)}/datasources/{jsonable_encoder(datasource_id)}",
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -1623,14 +2328,16 @@ class AsyncAgentClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:

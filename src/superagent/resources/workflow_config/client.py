@@ -7,15 +7,12 @@ from json.decoder import JSONDecodeError
 from ...core.api_error import ApiError
 from ...core.client_wrapper import AsyncClientWrapper, SyncClientWrapper
 from ...core.jsonable_encoder import jsonable_encoder
+from ...core.pydantic_utilities import pydantic_v1
+from ...core.query_encoder import encode_query
 from ...core.remove_none_from_dict import remove_none_from_dict
 from ...core.request_options import RequestOptions
 from ...errors.unprocessable_entity_error import UnprocessableEntityError
 from ...types.http_validation_error import HttpValidationError
-
-try:
-    import pydantic.v1 as pydantic  # type: ignore
-except ImportError:
-    import pydantic  # type: ignore
 
 
 class WorkflowConfigClient:
@@ -24,14 +21,32 @@ class WorkflowConfigClient:
 
     def get_schema(self, *, request_options: typing.Optional[RequestOptions] = None) -> typing.Any:
         """
-        Parameters:
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        Parameters
+        ----------
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.workflow_config.get_schema()
         """
         _response = self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/workflows/config/schema"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="GET",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/workflows/config/schema"),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -43,12 +58,12 @@ class WorkflowConfigClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -57,18 +72,38 @@ class WorkflowConfigClient:
 
     def add_config(self, workflow_id: str, *, request_options: typing.Optional[RequestOptions] = None) -> typing.Any:
         """
-        Parameters:
-            - workflow_id: str.
+        Parameters
+        ----------
+        workflow_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.workflow_config.add_config(
+            workflow_id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(
+            method="POST",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/workflows/{jsonable_encoder(workflow_id)}/config"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(remove_none_from_dict(request_options.get("additional_body_parameters", {})))
             if request_options is not None
@@ -83,14 +118,16 @@ class WorkflowConfigClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -104,14 +141,32 @@ class AsyncWorkflowConfigClient:
 
     async def get_schema(self, *, request_options: typing.Optional[RequestOptions] = None) -> typing.Any:
         """
-        Parameters:
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        Parameters
+        ----------
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.workflow_config.get_schema()
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/workflows/config/schema"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="GET",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/workflows/config/schema"),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -123,12 +178,12 @@ class AsyncWorkflowConfigClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -139,18 +194,38 @@ class AsyncWorkflowConfigClient:
         self, workflow_id: str, *, request_options: typing.Optional[RequestOptions] = None
     ) -> typing.Any:
         """
-        Parameters:
-            - workflow_id: str.
+        Parameters
+        ----------
+        workflow_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.workflow_config.add_config(
+            workflow_id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(
+            method="POST",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/workflows/{jsonable_encoder(workflow_id)}/config"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(remove_none_from_dict(request_options.get("additional_body_parameters", {})))
             if request_options is not None
@@ -165,14 +240,16 @@ class AsyncWorkflowConfigClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:

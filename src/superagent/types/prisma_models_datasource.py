@@ -6,48 +6,50 @@ import datetime as dt
 import typing
 
 from ..core.datetime_utils import serialize_datetime
+from ..core.pydantic_utilities import deep_union_pydantic_dicts, pydantic_v1
 from .datasource_status import DatasourceStatus
 from .datasource_type import DatasourceType
 
-try:
-    import pydantic.v1 as pydantic  # type: ignore
-except ImportError:
-    import pydantic  # type: ignore
 
-
-class PrismaModelsDatasource(pydantic.BaseModel):
+class PrismaModelsDatasource(pydantic_v1.BaseModel):
     """
     Represents a Datasource record
     """
 
     id: str
     name: str
-    content: typing.Optional[str] = None
-    description: typing.Optional[str] = None
-    url: typing.Optional[str] = None
+    content: typing.Optional[str]
+    description: typing.Optional[str]
+    url: typing.Optional[str]
     type: DatasourceType
-    api_user_id: str = pydantic.Field(alias="apiUserId")
-    api_user: typing.Optional[PrismaModelsApiUser] = pydantic.Field(alias="apiUser", default=None)
-    created_at: dt.datetime = pydantic.Field(alias="createdAt")
-    updated_at: dt.datetime = pydantic.Field(alias="updatedAt")
-    metadata: typing.Optional[str] = None
+    api_user_id: str = pydantic_v1.Field(alias="apiUserId")
+    api_user: typing.Optional[PrismaModelsApiUser] = pydantic_v1.Field(alias="apiUser")
+    created_at: dt.datetime = pydantic_v1.Field(alias="createdAt")
+    updated_at: dt.datetime = pydantic_v1.Field(alias="updatedAt")
+    metadata: typing.Optional[str]
     status: DatasourceStatus
-    datasources: typing.Optional[typing.List[PrismaModelsAgentDatasource]] = None
-    vector_db: typing.Optional[PrismaModelsVectorDb] = pydantic.Field(alias="vectorDb", default=None)
-    vector_db_id: typing.Optional[str] = pydantic.Field(alias="vectorDbId", default=None)
+    datasources: typing.Optional[typing.List[PrismaModelsAgentDatasource]]
+    vector_db: typing.Optional[PrismaModelsVectorDb] = pydantic_v1.Field(alias="vectorDb")
+    vector_db_id: typing.Optional[str] = pydantic_v1.Field(alias="vectorDbId")
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
         return super().json(**kwargs_with_defaults)
 
     def dict(self, **kwargs: typing.Any) -> typing.Dict[str, typing.Any]:
-        kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
-        return super().dict(**kwargs_with_defaults)
+        kwargs_with_defaults_exclude_unset: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
+        kwargs_with_defaults_exclude_none: typing.Any = {"by_alias": True, "exclude_none": True, **kwargs}
+
+        return deep_union_pydantic_dicts(
+            super().dict(**kwargs_with_defaults_exclude_unset), super().dict(**kwargs_with_defaults_exclude_none)
+        )
 
     class Config:
         frozen = True
         smart_union = True
         allow_population_by_field_name = True
+        populate_by_name = True
+        extra = pydantic_v1.Extra.forbid
         json_encoders = {dt.datetime: serialize_datetime}
 
 

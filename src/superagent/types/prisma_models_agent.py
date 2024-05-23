@@ -6,16 +6,12 @@ import datetime as dt
 import typing
 
 from ..core.datetime_utils import serialize_datetime
+from ..core.pydantic_utilities import deep_union_pydantic_dicts, pydantic_v1
 from .agent_type import AgentType
 from .llm_model import LlmModel
 
-try:
-    import pydantic.v1 as pydantic  # type: ignore
-except ImportError:
-    import pydantic  # type: ignore
 
-
-class PrismaModelsAgent(pydantic.BaseModel):
+class PrismaModelsAgent(pydantic_v1.BaseModel):
     """
     Represents a Agent record
     """
@@ -23,37 +19,41 @@ class PrismaModelsAgent(pydantic.BaseModel):
     id: str
     type: AgentType
     name: str
-    avatar: typing.Optional[str] = None
-    initial_message: typing.Optional[str] = pydantic.Field(alias="initialMessage", default=None)
+    avatar: typing.Optional[str]
+    initial_message: typing.Optional[str] = pydantic_v1.Field(alias="initialMessage")
     description: str
-    is_active: bool = pydantic.Field(alias="isActive")
-    created_at: dt.datetime = pydantic.Field(alias="createdAt")
-    updated_at: dt.datetime = pydantic.Field(alias="updatedAt")
-    llms: typing.Optional[typing.List[PrismaModelsAgentLlm]] = None
-    llm_model: typing.Optional[LlmModel] = pydantic.Field(alias="llmModel", default=None)
-    prompt: typing.Optional[str] = None
-    api_user_id: str = pydantic.Field(alias="apiUserId")
-    api_user: typing.Optional[PrismaModelsApiUser] = pydantic.Field(alias="apiUser", default=None)
-    datasources: typing.Optional[typing.List[PrismaModelsAgentDatasource]] = None
-    tools: typing.Optional[typing.List[PrismaModelsAgentTool]] = None
-    workflow_steps: typing.Optional[typing.List[PrismaModelsWorkflowStep]] = pydantic.Field(
-        alias="workflowSteps", default=None
-    )
-    metadata: typing.Optional[typing.Any] = None
-    output_schema: typing.Optional[str] = pydantic.Field(alias="outputSchema", default=None)
+    is_active: bool = pydantic_v1.Field(alias="isActive")
+    created_at: dt.datetime = pydantic_v1.Field(alias="createdAt")
+    updated_at: dt.datetime = pydantic_v1.Field(alias="updatedAt")
+    llms: typing.Optional[typing.List[PrismaModelsAgentLlm]]
+    llm_model: typing.Optional[LlmModel] = pydantic_v1.Field(alias="llmModel")
+    prompt: typing.Optional[str]
+    api_user_id: str = pydantic_v1.Field(alias="apiUserId")
+    api_user: typing.Optional[PrismaModelsApiUser] = pydantic_v1.Field(alias="apiUser")
+    datasources: typing.Optional[typing.List[PrismaModelsAgentDatasource]]
+    tools: typing.Optional[typing.List[PrismaModelsAgentTool]]
+    workflow_steps: typing.Optional[typing.List[PrismaModelsWorkflowStep]] = pydantic_v1.Field(alias="workflowSteps")
+    metadata: typing.Optional[typing.Any]
+    output_schema: typing.Optional[str] = pydantic_v1.Field(alias="outputSchema")
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
         return super().json(**kwargs_with_defaults)
 
     def dict(self, **kwargs: typing.Any) -> typing.Dict[str, typing.Any]:
-        kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
-        return super().dict(**kwargs_with_defaults)
+        kwargs_with_defaults_exclude_unset: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
+        kwargs_with_defaults_exclude_none: typing.Any = {"by_alias": True, "exclude_none": True, **kwargs}
+
+        return deep_union_pydantic_dicts(
+            super().dict(**kwargs_with_defaults_exclude_unset), super().dict(**kwargs_with_defaults_exclude_none)
+        )
 
     class Config:
         frozen = True
         smart_union = True
         allow_population_by_field_name = True
+        populate_by_name = True
+        extra = pydantic_v1.Extra.forbid
         json_encoders = {dt.datetime: serialize_datetime}
 
 

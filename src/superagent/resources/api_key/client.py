@@ -7,6 +7,8 @@ from json.decoder import JSONDecodeError
 from ...core.api_error import ApiError
 from ...core.client_wrapper import AsyncClientWrapper, SyncClientWrapper
 from ...core.jsonable_encoder import jsonable_encoder
+from ...core.pydantic_utilities import pydantic_v1
+from ...core.query_encoder import encode_query
 from ...core.remove_none_from_dict import remove_none_from_dict
 from ...core.request_options import RequestOptions
 from ...errors.unprocessable_entity_error import UnprocessableEntityError
@@ -15,11 +17,6 @@ from ...types.api_key_list import ApiKeyList
 from ...types.app_models_request_api_key import AppModelsRequestApiKey
 from ...types.app_models_response_api_key import AppModelsResponseApiKey
 from ...types.http_validation_error import HttpValidationError
-
-try:
-    import pydantic.v1 as pydantic  # type: ignore
-except ImportError:
-    import pydantic  # type: ignore
 
 # this is used as the default value for optional parameters
 OMIT = typing.cast(typing.Any, ...)
@@ -33,14 +30,32 @@ class ApiKeyClient:
         """
         List API keys
 
-        Parameters:
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        Parameters
+        ----------
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        ApiKeyList
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.api_key.list()
         """
         _response = self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/api-keys"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="GET",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/api-keys"),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -52,12 +67,12 @@ class ApiKeyClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(ApiKeyList, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(ApiKeyList, _response.json())  # type: ignore
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -70,16 +85,39 @@ class ApiKeyClient:
         """
         Create a new API key
 
-        Parameters:
-            - request: AppModelsRequestApiKey.
+        Parameters
+        ----------
+        request : AppModelsRequestApiKey
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        ApiKeyCreate
+            Successful Response
+
+        Examples
+        --------
+        from superagent import AppModelsRequestApiKey
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.api_key.create(
+            request=AppModelsRequestApiKey(
+                name="string",
+            ),
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/api-keys"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="POST",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/api-keys"),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -97,14 +135,16 @@ class ApiKeyClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(ApiKeyCreate, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(ApiKeyCreate, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -115,16 +155,38 @@ class ApiKeyClient:
         """
         Delete an API key
 
-        Parameters:
-            - id: str.
+        Parameters
+        ----------
+        id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseApiKey
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.api_key.delete(
+            id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "DELETE",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", f"api/v1/api-keys/{jsonable_encoder(id)}"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="DELETE",
+            url=urllib.parse.urljoin(
+                f"{self._client_wrapper.get_base_url()}/", f"api/v1/api-keys/{jsonable_encoder(id)}"
+            ),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -136,14 +198,16 @@ class ApiKeyClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseApiKey, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseApiKey, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -156,18 +220,44 @@ class ApiKeyClient:
         """
         Update an API key
 
-        Parameters:
-            - id: str.
+        Parameters
+        ----------
+        id : str
 
-            - request: AppModelsRequestApiKey.
+        request : AppModelsRequestApiKey
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseApiKey
+            Successful Response
+
+        Examples
+        --------
+        from superagent import AppModelsRequestApiKey
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.api_key.update(
+            id="string",
+            request=AppModelsRequestApiKey(
+                name="string",
+            ),
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "PATCH",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", f"api/v1/api-keys/{jsonable_encoder(id)}"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="PATCH",
+            url=urllib.parse.urljoin(
+                f"{self._client_wrapper.get_base_url()}/", f"api/v1/api-keys/{jsonable_encoder(id)}"
+            ),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -185,14 +275,16 @@ class ApiKeyClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseApiKey, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseApiKey, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -208,14 +300,32 @@ class AsyncApiKeyClient:
         """
         List API keys
 
-        Parameters:
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        Parameters
+        ----------
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        ApiKeyList
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.api_key.list()
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/api-keys"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="GET",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/api-keys"),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -227,12 +337,12 @@ class AsyncApiKeyClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(ApiKeyList, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(ApiKeyList, _response.json())  # type: ignore
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -245,16 +355,39 @@ class AsyncApiKeyClient:
         """
         Create a new API key
 
-        Parameters:
-            - request: AppModelsRequestApiKey.
+        Parameters
+        ----------
+        request : AppModelsRequestApiKey
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        ApiKeyCreate
+            Successful Response
+
+        Examples
+        --------
+        from superagent import AppModelsRequestApiKey
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.api_key.create(
+            request=AppModelsRequestApiKey(
+                name="string",
+            ),
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/api-keys"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="POST",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/api-keys"),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -272,14 +405,16 @@ class AsyncApiKeyClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(ApiKeyCreate, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(ApiKeyCreate, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -292,16 +427,38 @@ class AsyncApiKeyClient:
         """
         Delete an API key
 
-        Parameters:
-            - id: str.
+        Parameters
+        ----------
+        id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseApiKey
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.api_key.delete(
+            id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "DELETE",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", f"api/v1/api-keys/{jsonable_encoder(id)}"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="DELETE",
+            url=urllib.parse.urljoin(
+                f"{self._client_wrapper.get_base_url()}/", f"api/v1/api-keys/{jsonable_encoder(id)}"
+            ),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -313,14 +470,16 @@ class AsyncApiKeyClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseApiKey, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseApiKey, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -333,18 +492,44 @@ class AsyncApiKeyClient:
         """
         Update an API key
 
-        Parameters:
-            - id: str.
+        Parameters
+        ----------
+        id : str
 
-            - request: AppModelsRequestApiKey.
+        request : AppModelsRequestApiKey
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseApiKey
+            Successful Response
+
+        Examples
+        --------
+        from superagent import AppModelsRequestApiKey
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.api_key.update(
+            id="string",
+            request=AppModelsRequestApiKey(
+                name="string",
+            ),
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "PATCH",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", f"api/v1/api-keys/{jsonable_encoder(id)}"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="PATCH",
+            url=urllib.parse.urljoin(
+                f"{self._client_wrapper.get_base_url()}/", f"api/v1/api-keys/{jsonable_encoder(id)}"
+            ),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -362,14 +547,16 @@ class AsyncApiKeyClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseApiKey, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseApiKey, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:

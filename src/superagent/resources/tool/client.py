@@ -7,17 +7,14 @@ from json.decoder import JSONDecodeError
 from ...core.api_error import ApiError
 from ...core.client_wrapper import AsyncClientWrapper, SyncClientWrapper
 from ...core.jsonable_encoder import jsonable_encoder
+from ...core.pydantic_utilities import pydantic_v1
+from ...core.query_encoder import encode_query
 from ...core.remove_none_from_dict import remove_none_from_dict
 from ...core.request_options import RequestOptions
 from ...errors.unprocessable_entity_error import UnprocessableEntityError
 from ...types.app_models_response_tool import AppModelsResponseTool
 from ...types.http_validation_error import HttpValidationError
 from ...types.tool_list import ToolList
-
-try:
-    import pydantic.v1 as pydantic  # type: ignore
-except ImportError:
-    import pydantic  # type: ignore
 
 # this is used as the default value for optional parameters
 OMIT = typing.cast(typing.Any, ...)
@@ -37,27 +34,48 @@ class ToolClient:
         """
         List all tools
 
-        Parameters:
-            - skip: typing.Optional[int].
+        Parameters
+        ----------
+        skip : typing.Optional[int]
 
-            - take: typing.Optional[int].
+        take : typing.Optional[int]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        ToolList
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.tool.list(
+            skip=1,
+            take=1,
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/tools"),
-            params=jsonable_encoder(
-                remove_none_from_dict(
-                    {
-                        "skip": skip,
-                        "take": take,
-                        **(
-                            request_options.get("additional_query_parameters", {})
-                            if request_options is not None
-                            else {}
-                        ),
-                    }
+            method="GET",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/tools"),
+            params=encode_query(
+                jsonable_encoder(
+                    remove_none_from_dict(
+                        {
+                            "skip": skip,
+                            "take": take,
+                            **(
+                                request_options.get("additional_query_parameters", {})
+                                if request_options is not None
+                                else {}
+                            ),
+                        }
+                    )
                 )
             ),
             headers=jsonable_encoder(
@@ -70,14 +88,16 @@ class ToolClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(ToolList, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(ToolList, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -88,8 +108,8 @@ class ToolClient:
         self,
         *,
         name: str,
-        description: typing.Optional[str] = OMIT,
         type: str,
+        description: typing.Optional[str] = OMIT,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = OMIT,
         return_direct: typing.Optional[bool] = OMIT,
         request_options: typing.Optional[RequestOptions] = None,
@@ -97,18 +117,40 @@ class ToolClient:
         """
         Create a new tool
 
-        Parameters:
-            - name: str.
+        Parameters
+        ----------
+        name : str
 
-            - description: typing.Optional[str].
+        type : str
 
-            - type: str.
+        description : typing.Optional[str]
 
-            - metadata: typing.Optional[typing.Dict[str, typing.Any]].
+        metadata : typing.Optional[typing.Dict[str, typing.Any]]
 
-            - return_direct: typing.Optional[bool].
+        return_direct : typing.Optional[bool]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseTool
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.tool.create(
+            name="string",
+            description="string",
+            type="string",
+            metadata={"string": {"key": "value"}},
+            return_direct=True,
+        )
         """
         _request: typing.Dict[str, typing.Any] = {"name": name, "type": type}
         if description is not OMIT:
@@ -118,10 +160,12 @@ class ToolClient:
         if return_direct is not OMIT:
             _request["returnDirect"] = return_direct
         _response = self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/tools"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="POST",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/tools"),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(_request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -139,14 +183,16 @@ class ToolClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseTool, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseTool, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -157,18 +203,38 @@ class ToolClient:
         """
         Get a specific tool
 
-        Parameters:
-            - tool_id: str.
+        Parameters
+        ----------
+        tool_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseTool
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.tool.get(
+            tool_id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(
+            method="GET",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/tools/{jsonable_encoder(tool_id)}"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -180,14 +246,16 @@ class ToolClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseTool, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseTool, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -198,18 +266,38 @@ class ToolClient:
         """
         Delete a specific tool
 
-        Parameters:
-            - tool_id: str.
+        Parameters
+        ----------
+        tool_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.tool.delete(
+            tool_id="string",
+        )
         """
         _response = self._client_wrapper.httpx_client.request(
-            "DELETE",
-            urllib.parse.urljoin(
+            method="DELETE",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/tools/{jsonable_encoder(tool_id)}"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -221,14 +309,16 @@ class ToolClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -249,20 +339,43 @@ class ToolClient:
         """
         Update a specific tool
 
-        Parameters:
-            - tool_id: str.
+        Parameters
+        ----------
+        tool_id : str
 
-            - name: typing.Optional[str].
+        name : typing.Optional[str]
 
-            - description: typing.Optional[str].
+        description : typing.Optional[str]
 
-            - type: typing.Optional[str].
+        type : typing.Optional[str]
 
-            - metadata: typing.Optional[typing.Dict[str, typing.Any]].
+        metadata : typing.Optional[typing.Dict[str, typing.Any]]
 
-            - return_direct: typing.Optional[bool].
+        return_direct : typing.Optional[bool]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseTool
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import Superagent
+
+        client = Superagent(
+            token="YOUR_TOKEN",
+        )
+        client.tool.update(
+            tool_id="string",
+            name="string",
+            description="string",
+            type="string",
+            metadata={"string": {"key": "value"}},
+            return_direct=True,
+        )
         """
         _request: typing.Dict[str, typing.Any] = {}
         if name is not OMIT:
@@ -276,12 +389,14 @@ class ToolClient:
         if return_direct is not OMIT:
             _request["returnDirect"] = return_direct
         _response = self._client_wrapper.httpx_client.request(
-            "PATCH",
-            urllib.parse.urljoin(
+            method="PATCH",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/tools/{jsonable_encoder(tool_id)}"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(_request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -299,14 +414,16 @@ class ToolClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseTool, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseTool, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -328,27 +445,48 @@ class AsyncToolClient:
         """
         List all tools
 
-        Parameters:
-            - skip: typing.Optional[int].
+        Parameters
+        ----------
+        skip : typing.Optional[int]
 
-            - take: typing.Optional[int].
+        take : typing.Optional[int]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        ToolList
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.tool.list(
+            skip=1,
+            take=1,
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/tools"),
-            params=jsonable_encoder(
-                remove_none_from_dict(
-                    {
-                        "skip": skip,
-                        "take": take,
-                        **(
-                            request_options.get("additional_query_parameters", {})
-                            if request_options is not None
-                            else {}
-                        ),
-                    }
+            method="GET",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/tools"),
+            params=encode_query(
+                jsonable_encoder(
+                    remove_none_from_dict(
+                        {
+                            "skip": skip,
+                            "take": take,
+                            **(
+                                request_options.get("additional_query_parameters", {})
+                                if request_options is not None
+                                else {}
+                            ),
+                        }
+                    )
                 )
             ),
             headers=jsonable_encoder(
@@ -361,14 +499,16 @@ class AsyncToolClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(ToolList, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(ToolList, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -379,8 +519,8 @@ class AsyncToolClient:
         self,
         *,
         name: str,
-        description: typing.Optional[str] = OMIT,
         type: str,
+        description: typing.Optional[str] = OMIT,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = OMIT,
         return_direct: typing.Optional[bool] = OMIT,
         request_options: typing.Optional[RequestOptions] = None,
@@ -388,18 +528,40 @@ class AsyncToolClient:
         """
         Create a new tool
 
-        Parameters:
-            - name: str.
+        Parameters
+        ----------
+        name : str
 
-            - description: typing.Optional[str].
+        type : str
 
-            - type: str.
+        description : typing.Optional[str]
 
-            - metadata: typing.Optional[typing.Dict[str, typing.Any]].
+        metadata : typing.Optional[typing.Dict[str, typing.Any]]
 
-            - return_direct: typing.Optional[bool].
+        return_direct : typing.Optional[bool]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseTool
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.tool.create(
+            name="string",
+            description="string",
+            type="string",
+            metadata={"string": {"key": "value"}},
+            return_direct=True,
+        )
         """
         _request: typing.Dict[str, typing.Any] = {"name": name, "type": type}
         if description is not OMIT:
@@ -409,10 +571,12 @@ class AsyncToolClient:
         if return_direct is not OMIT:
             _request["returnDirect"] = return_direct
         _response = await self._client_wrapper.httpx_client.request(
-            "POST",
-            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/tools"),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            method="POST",
+            url=urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "api/v1/tools"),
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(_request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -430,14 +594,16 @@ class AsyncToolClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseTool, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseTool, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -450,18 +616,38 @@ class AsyncToolClient:
         """
         Get a specific tool
 
-        Parameters:
-            - tool_id: str.
+        Parameters
+        ----------
+        tool_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseTool
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.tool.get(
+            tool_id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "GET",
-            urllib.parse.urljoin(
+            method="GET",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/tools/{jsonable_encoder(tool_id)}"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -473,14 +659,16 @@ class AsyncToolClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseTool, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseTool, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -491,18 +679,38 @@ class AsyncToolClient:
         """
         Delete a specific tool
 
-        Parameters:
-            - tool_id: str.
+        Parameters
+        ----------
+        tool_id : str
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        typing.Any
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.tool.delete(
+            tool_id="string",
+        )
         """
         _response = await self._client_wrapper.httpx_client.request(
-            "DELETE",
-            urllib.parse.urljoin(
+            method="DELETE",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/tools/{jsonable_encoder(tool_id)}"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             headers=jsonable_encoder(
                 remove_none_from_dict(
@@ -514,14 +722,16 @@ class AsyncToolClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.Any, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(typing.Any, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:
@@ -542,20 +752,43 @@ class AsyncToolClient:
         """
         Update a specific tool
 
-        Parameters:
-            - tool_id: str.
+        Parameters
+        ----------
+        tool_id : str
 
-            - name: typing.Optional[str].
+        name : typing.Optional[str]
 
-            - description: typing.Optional[str].
+        description : typing.Optional[str]
 
-            - type: typing.Optional[str].
+        type : typing.Optional[str]
 
-            - metadata: typing.Optional[typing.Dict[str, typing.Any]].
+        metadata : typing.Optional[typing.Dict[str, typing.Any]]
 
-            - return_direct: typing.Optional[bool].
+        return_direct : typing.Optional[bool]
 
-            - request_options: typing.Optional[RequestOptions]. Request-specific configuration.
+        request_options : typing.Optional[RequestOptions]
+            Request-specific configuration.
+
+        Returns
+        -------
+        AppModelsResponseTool
+            Successful Response
+
+        Examples
+        --------
+        from superagent.client import AsyncSuperagent
+
+        client = AsyncSuperagent(
+            token="YOUR_TOKEN",
+        )
+        await client.tool.update(
+            tool_id="string",
+            name="string",
+            description="string",
+            type="string",
+            metadata={"string": {"key": "value"}},
+            return_direct=True,
+        )
         """
         _request: typing.Dict[str, typing.Any] = {}
         if name is not OMIT:
@@ -569,12 +802,14 @@ class AsyncToolClient:
         if return_direct is not OMIT:
             _request["returnDirect"] = return_direct
         _response = await self._client_wrapper.httpx_client.request(
-            "PATCH",
-            urllib.parse.urljoin(
+            method="PATCH",
+            url=urllib.parse.urljoin(
                 f"{self._client_wrapper.get_base_url()}/", f"api/v1/tools/{jsonable_encoder(tool_id)}"
             ),
-            params=jsonable_encoder(
-                request_options.get("additional_query_parameters") if request_options is not None else None
+            params=encode_query(
+                jsonable_encoder(
+                    request_options.get("additional_query_parameters") if request_options is not None else None
+                )
             ),
             json=jsonable_encoder(_request)
             if request_options is None or request_options.get("additional_body_parameters") is None
@@ -592,14 +827,16 @@ class AsyncToolClient:
             ),
             timeout=request_options.get("timeout_in_seconds")
             if request_options is not None and request_options.get("timeout_in_seconds") is not None
-            else 60,
+            else self._client_wrapper.get_timeout(),
             retries=0,
             max_retries=request_options.get("max_retries") if request_options is not None else 0,  # type: ignore
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(AppModelsResponseTool, _response.json())  # type: ignore
+            return pydantic_v1.parse_obj_as(AppModelsResponseTool, _response.json())  # type: ignore
         if _response.status_code == 422:
-            raise UnprocessableEntityError(pydantic.parse_obj_as(HttpValidationError, _response.json()))  # type: ignore
+            raise UnprocessableEntityError(
+                pydantic_v1.parse_obj_as(HttpValidationError, _response.json())  # type: ignore
+            )
         try:
             _response_json = _response.json()
         except JSONDecodeError:

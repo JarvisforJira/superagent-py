@@ -6,42 +6,42 @@ import datetime as dt
 import typing
 
 from ..core.datetime_utils import serialize_datetime
-
-try:
-    import pydantic.v1 as pydantic  # type: ignore
-except ImportError:
-    import pydantic  # type: ignore
+from ..core.pydantic_utilities import deep_union_pydantic_dicts, pydantic_v1
 
 
-class PrismaModelsWorkflow(pydantic.BaseModel):
+class PrismaModelsWorkflow(pydantic_v1.BaseModel):
     """
     Represents a Workflow record
     """
 
     id: str
     name: str
-    description: typing.Optional[str] = None
-    created_at: dt.datetime = pydantic.Field(alias="createdAt")
-    updated_at: dt.datetime = pydantic.Field(alias="updatedAt")
-    steps: typing.Optional[typing.List[PrismaModelsWorkflowStep]] = None
-    api_user_id: str = pydantic.Field(alias="apiUserId")
-    api_user: typing.Optional[PrismaModelsApiUser] = pydantic.Field(alias="apiUser", default=None)
-    workflow_configs: typing.Optional[typing.List[WorkflowConfig]] = pydantic.Field(
-        alias="workflowConfigs", default=None
-    )
+    description: typing.Optional[str]
+    created_at: dt.datetime = pydantic_v1.Field(alias="createdAt")
+    updated_at: dt.datetime = pydantic_v1.Field(alias="updatedAt")
+    steps: typing.Optional[typing.List[PrismaModelsWorkflowStep]]
+    api_user_id: str = pydantic_v1.Field(alias="apiUserId")
+    api_user: typing.Optional[PrismaModelsApiUser] = pydantic_v1.Field(alias="apiUser")
+    workflow_configs: typing.Optional[typing.List[WorkflowConfig]] = pydantic_v1.Field(alias="workflowConfigs")
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
         return super().json(**kwargs_with_defaults)
 
     def dict(self, **kwargs: typing.Any) -> typing.Dict[str, typing.Any]:
-        kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
-        return super().dict(**kwargs_with_defaults)
+        kwargs_with_defaults_exclude_unset: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
+        kwargs_with_defaults_exclude_none: typing.Any = {"by_alias": True, "exclude_none": True, **kwargs}
+
+        return deep_union_pydantic_dicts(
+            super().dict(**kwargs_with_defaults_exclude_unset), super().dict(**kwargs_with_defaults_exclude_none)
+        )
 
     class Config:
         frozen = True
         smart_union = True
         allow_population_by_field_name = True
+        populate_by_name = True
+        extra = pydantic_v1.Extra.forbid
         json_encoders = {dt.datetime: serialize_datetime}
 
 

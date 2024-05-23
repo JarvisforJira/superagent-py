@@ -68,6 +68,7 @@ from .types import (
 from .errors import UnprocessableEntityError
 from .resources import agent, api_key, api_user, datasource, llm, tool, vector_database, workflow, workflow_config
 from .environment import SuperagentEnvironment
+from .version import __version__
 
 __all__ = [
     "AgentDatasosurceList",
@@ -135,6 +136,7 @@ __all__ = [
     "WorkflowConfig",
     "WorkflowList",
     "WorkflowStepList",
+    "__version__",
     "agent",
     "api_key",
     "api_user",
